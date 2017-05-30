@@ -237,6 +237,7 @@
             this.btnDelete.TabIndex = 3;
             this.btnDelete.Text = "删除";
             this.btnDelete.UseVisualStyleBackColor = true;
+            this.btnDelete.Click += new System.EventHandler(this.btnDelete_Click);
             // 
             // btndownload
             // 
@@ -247,6 +248,7 @@
             this.btndownload.TabIndex = 2;
             this.btndownload.Text = "下载";
             this.btndownload.UseVisualStyleBackColor = true;
+            this.btndownload.Click += new System.EventHandler(this.btndownload_Click);
             // 
             // btnUpload
             // 
@@ -268,6 +270,7 @@
             this.lstbxFtpResources.Name = "lstbxFtpResources";
             this.lstbxFtpResources.Size = new System.Drawing.Size(474, 212);
             this.lstbxFtpResources.TabIndex = 0;
+            this.lstbxFtpResources.DoubleClick += new System.EventHandler(this.lstbxFtpResources_DoubleClick);
             // 
             // Form1
             // 

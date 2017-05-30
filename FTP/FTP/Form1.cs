@@ -5,6 +5,7 @@ using System.Windows.Forms;
 using System.Net;
 using System.IO;
 
+
 namespace FTP
 {
     public partial class Form1 : Form
@@ -369,15 +370,157 @@ namespace FTP
             }
             return uri;
         }
+
         //从服务器上下载文件到本地
+        private void btndownload_Click(object sender, EventArgs e)
+        {
+            string fileName = GetSelectedFile();
+            if (fileName.Length == 0)
+            {
+                MessageBox.Show("请选择要下载的文件！", "提示");
+                return;
+            }
+            //选择保存的位置
+            SaveFileDialog saveFileDialog = new SaveFileDialog();
+            saveFileDialog.FileName = fileName;
+            saveFileDialog.Filter = "所有文件(*.*)|(*.*)";
+            if (saveFileDialog.ShowDialog() != DialogResult.OK)
+            {
+                return;
+            }
+            string filePath = saveFileDialog.FileName;
+            try
+            {
+                string uri = GetUriString(fileName);
+                FtpWebRequest request = CreateFtpWebRequest(uri, WebRequestMethods.Ftp.DownloadFile);
+                FtpWebResponse response = GetFtpResponse(request);
+                if (response == null)
+                {
+                    lstbxFtpState.Items.Add("服务器未响应...");
+                    lstbxFtpState.TopIndex = lstbxFtpState.Items.Count - 1;
+                    return;
+                }
+                Stream responseStream = response.GetResponseStream();
+                FileStream filestream = File.Create(filePath);
+                int buflength = 8196;
+                byte[] buffer = new byte[buflength];
+                int bytesRead = 1;
+                lstbxFtpState.Items.Add("打开下载通道，文件下载中...");
+                while (bytesRead != 0)
+                {
+                    bytesRead = responseStream.Read(buffer, 0, buflength);
+                    filestream.Write(buffer, 0, bytesRead);
+                }
+                responseStream.Close();
+                filestream.Close();
+                lstbxFtpState.Items.Add("下载完毕，服务器返回:" + response.StatusCode + "" + response.StatusDescription);
+                lstbxFtpState.TabIndex = lstbxFtpState.Items.Count - 1;
+                MessageBox.Show("下载完成！");
+            }
+            catch (WebException ex)
+            {
+                lstbxFtpState.Items.Add("发生错误，返回状态为:" + ex.Status);
+                lstbxFtpState.TopIndex = lstbxFtpState.Items.Count - 1;
+                MessageBox.Show(ex.Message, "下载失败!");
+            }
 
-
-
-
+        }
+        //获得选择的文件
+        //如果选择的是目录或者是返回上层目录，则返回null
+        private string GetSelectedFile()
+        {
+            string filename = string.Empty;
+            if (!(lstbxFtpResources.SelectedIndex == -1 || lstbxFtpResources.SelectedItem.ToString().Substring(0, 4) == "[目录]"))
+            {
+                string[] namefield = lstbxFtpResources.SelectedItem.ToString().Split(' ');
+                filename = namefield[0];
+            }
+            return filename;
+        }
+        //删除服务器事件
+        private void btnDelete_Click(object sender, EventArgs e)
+        {
+            string filename = GetSelectedFile();
+            if (filename.Length == 0)
+            {
+                MessageBox.Show("请选择要删除的文件！", "提示");
+                return;
+            }
+            try
+            {
+                string uri = GetUriString(filename);
+                if (MessageBox.Show("确定要删除文件" + filename + "吗?", "确认删除文件", MessageBoxButtons.YesNo) == DialogResult.Yes)
+                {
+                    FtpWebRequest request = CreateFtpWebRequest(uri, WebRequestMethods.Ftp.DeleteFile);
+                    FtpWebResponse response = GetFtpResponse(request);
+                    if (response == null)
+                    {
+                        lstbxFtpState.Items.Add("服务器未响应...");
+                        lstbxFtpState.TopIndex = lstbxFtpState.Items.Count - 1;
+                        return;
+                    }
+                    lstbxFtpState.Items.Add("文件删除成功，服务器返回" + response.StatusCode + "" + response.StatusDescription);
+                    ShowFtpFileAndDirectory();
+                }
+                else
+                {
+                    return;
+                }
+            }
+            catch (WebException ex)
+            {
+                lstbxFtpState.Items.Add("发生错误,返回状态为:" + ex.Status);
+                lstbxFtpState.TabIndex = lstbxFtpState.Items.Count - 1;
+                MessageBox.Show(ex.Message, "删除失败");
+            }
+        }
+        //变更目录操作
+        private void lstbxFtpResources_DoubleClick(object sender, EventArgs e)
+        {
+            //点击返回上层目录
+            if (lstbxFtpResources.SelectedIndex == 0)
+            {
+                if (currentDir == "/")
+                {
+                    MessageBox.Show("当前目录已经是顶层目录", "", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
+                    return;
+                }
+                int index = currentDir.LastIndexOf("/");
+                if (index == 0)
+                {
+                    currentDir = "/";
+                }
+                else
+                {
+                    currentDir = currentDir.Substring(0, index);
+                }
+                //每次更改目录后立即刷新资源列表
+                ShowFtpFileAndDirectory();
+            }
+            else
+            {
+                if (lstbxFtpResources.SelectedIndex > 0 && lstbxFtpResources.SelectedItem.ToString().Contains("[目录]"))
+                {
+                    if (currentDir == "/")
+                    {
+                        currentDir = "/" + lstbxFtpResources.SelectedItem.ToString().Substring(4);
+                    }
+                    else
+                    {
+                        currentDir = currentDir + "/" + lstbxFtpResources.SelectedItem.ToString().Substring(4);
+                    }
+                    string[] currentDirfield = currentDir.Split(' ');
+                    currentDir = currentDirfield[0];
+                    ShowFtpFileAndDirectory();
+                }
+            }
+        }
+        
 
 
     }
+}
 
-    }
+
 
 
